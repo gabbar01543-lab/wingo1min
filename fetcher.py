@@ -19,7 +19,7 @@ DB_PATH = os.path.join(BASE_DIR, 'my_history_storage.db')
 EXTERNAL_API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json"
 
 # HOW MANY RECORDS TO KEEP
-MAX_RECORDS = 2000
+MAX_RECORDS = 1000
 
 # --- DATABASE INIT ---
 def init_db():
