@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS  # <-- IMPORT CORS
 import sqlite3
 import os
 import threading
@@ -9,6 +10,7 @@ import sys
 import fetcher
 
 app = Flask(__name__)
+CORS(app)  # <-- ENABLE CORS FOR ALL ENDPOINTS
 
 # --- CONFIGURATION ---
 # We use Render's persistent disk so data survives restarts
@@ -102,7 +104,7 @@ def home():
     conn.close()
     return f"""
     <body style="font-family:monospace; background:#111; color:#0f0; text-align:center; padding-top:50px;">
-        <h1>TITAN DATA WAREHOUSE</h1>
+        <h1>MR PERFECT DATA WAREHOUSE</h1>
         <h2>RECORDS STORED: {count}</h2>
         <p>API ENDPOINT: <br> 
            <span style="background:#222; padding:5px;">/api/get_history</span>
