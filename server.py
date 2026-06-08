@@ -1,19 +1,19 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS  # <-- IMPORT CORS
+from flask_cors import CORS
 import sqlite3
 import os
 import threading
 import asyncio
 import sys
 
-# --- IMPORT FETCHER (The Recorder) ---
+# Import your background miner
 import fetcher
 
 app = Flask(__name__)
-CORS(app)  # <-- ENABLE CORS FOR ALL ENDPOINTS
+# THIS IS THE MAGIC LINE: It allows your HTML file to fetch data without CORS blocks
+CORS(app) 
 
 # --- CONFIGURATION ---
-# We use Render's persistent disk so data survives restarts
 if os.path.exists('/var/lib/data'):
     BASE_DIR = '/var/lib/data'
 elif os.path.exists('/data'):
@@ -30,24 +30,20 @@ def get_db_connection():
     return conn
 
 # --- BACKGROUND WORKER ---
-# This starts the "Recorder" (Fetcher) automatically when the server turns on
 def start_background_recorder():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(fetcher.start_recording_engine())
 
 if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
-    # Start the fetcher in a background thread
     t = threading.Thread(target=start_background_recorder, daemon=True)
     t.start()
     print(">>> DATA RECORDER STARTED <<<")
 
-# --- YOUR NEW API ENDPOINT ---
-# Other projects will connect here: https://your-app.onrender.com/api/get_history
+# --- API ENDPOINT ---
 @app.route('/api/get_history', methods=['GET'])
 def get_history_api():
     try:
-        # 1. Handle Paging (just like the real API)
         try:
             page_no = int(request.args.get('pageNo', 1))
             page_size = int(request.args.get('pageSize', 20))
@@ -56,15 +52,11 @@ def get_history_api():
             page_size = 20
 
         offset = (page_no - 1) * page_size
-
-        # 2. Read from YOUR Database
         conn = get_db_connection()
         
-        # Get Total Count
         total_row = conn.execute("SELECT COUNT(*) FROM history").fetchone()
         total_count = total_row[0] if total_row else 0
 
-        # Get The Data (Newest First)
         cursor = conn.execute(
             "SELECT issue, number, color FROM history ORDER BY issue DESC LIMIT ? OFFSET ?", 
             (page_size, offset)
@@ -72,14 +64,13 @@ def get_history_api():
         rows = cursor.fetchall()
         conn.close()
 
-        # 3. Format as JSON (Matching the original API structure)
         data_list = []
         for row in rows:
             data_list.append({
                 "issueNumber": row['issue'],
                 "number": str(row['number']),
                 "color": row['color'],
-                "premium": str(row['number']) # Redundant but keeps format compatible
+                "premium": str(row['number']) 
             })
 
         return jsonify({
@@ -100,8 +91,13 @@ def get_history_api():
 @app.route('/')
 def home():
     conn = get_db_connection()
-    count = conn.execute("SELECT COUNT(*) FROM history").fetchone()[0]
-    conn.close()
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM history").fetchone()[0]
+    except sqlite3.OperationalError:
+        count = 0
+    finally:
+        conn.close()
+        
     return f"""
     <body style="font-family:monospace; background:#111; color:#0f0; text-align:center; padding-top:50px;">
         <h1>MR PERFECT DATA WAREHOUSE</h1>
